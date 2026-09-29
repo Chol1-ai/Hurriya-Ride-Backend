@@ -1,0 +1,57 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int       @id @default(autoincrement())
+  name      String
+  email     String    @unique
+  password  String
+  role      String    @default("PASSENGER")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  rides     Ride[]
+  payments  Payment[]
+}
+
+model Driver {
+  id        Int      @id @default(autoincrement())
+  name      String
+  phone     String?
+  vehicle   String?
+  status    String   @default("AVAILABLE")
+  rating    Float    @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  rides     Ride[]
+}
+
+model Ride {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  driverId    Int?
+  pickup      String
+  destination String
+  vehicleType String
+  fare        Int
+  status      String   @default("REQUESTED")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id])
+  driver      Driver?  @relation(fields: [driverId], references: [id])
+}
+
+model Payment {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  amount    Int
+  type      String   @default("TOPUP")
+  status    String   @default("COMPLETED")
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+}
