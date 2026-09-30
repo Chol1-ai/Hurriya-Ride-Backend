@@ -14,8 +14,7 @@ services:
     plan: free
     region: frankfurt
     buildCommand: npm ci && npm run prisma:generate
-    preDeployCommand: npm run prisma:migrate:deploy
-    startCommand: npm start
+    startCommand: npm run prisma:migrate:deploy && npm start
     healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
