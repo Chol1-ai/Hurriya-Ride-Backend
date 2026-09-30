@@ -17,10 +17,12 @@ model User {
   updatedAt DateTime  @updatedAt
   rides     Ride[]
   payments  Payment[]
+  driverProfile Driver? @relation("DriverUser")
 }
 
 model Driver {
   id        Int      @id @default(autoincrement())
+  userId    Int?     @unique
   name      String
   phone     String?
   vehicle   String?
@@ -29,6 +31,7 @@ model Driver {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   rides     Ride[]
+  user      User?    @relation("DriverUser", fields: [userId], references: [id], onDelete: SetNull)
 }
 
 model Ride {
@@ -36,7 +39,12 @@ model Ride {
   userId      Int
   driverId    Int?
   pickup      String
+  pickupLat   Float?
+  pickupLng   Float?
   destination String
+  destinationLat Float?
+  destinationLng Float?
+  distanceMeters Int?
   vehicleType String
   fare        Int
   status      String   @default("REQUESTED")

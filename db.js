@@ -56,6 +56,15 @@ function mapDriver(driver) {
   };
 }
 
+function mapPayment(payment) {
+  if (!payment) return null;
+  return {
+    ...payment,
+    type: normalizeStatus(payment.type, 'Topup'),
+    status: normalizeStatus(payment.status, 'Completed'),
+  };
+}
+
 const db = {
   health: async () => {
     await prisma.$queryRaw`SELECT 1`;
@@ -63,6 +72,11 @@ const db = {
   },
   users: {
     all: async () => (await prisma.user.findMany()).map(mapUser),
+    managedAccounts: async () => prisma.user.findMany({
+      where: { role: { in: ['DRIVER', 'FLEET'] } },
+      select: { id: true, name: true, email: true, role: true, createdAt: true },
+      orderBy: { createdAt: 'desc' },
+    }).then((users) => users.map(mapUser)),
     findByEmail: async (email) => mapUser(await prisma.user.findUnique({ where: { email } })),
     findById: async (id) => mapUser(await prisma.user.findUnique({ where: { id: Number(id) } })),
     create: async (user) => mapUser(await prisma.user.create({
@@ -73,6 +87,30 @@ const db = {
         role: dbRole(user.role),
       },
     })),
+    createManaged: async (user) => prisma.$transaction(async (transaction) => {
+      const createdUser = await transaction.user.create({
+        data: {
+          name: user.name,
+          email: user.email,
+          password: user.password,
+          role: dbRole(user.role),
+        },
+      });
+
+      if (normalizeRole(user.role) === 'Driver') {
+        await transaction.driver.create({
+          data: {
+            userId: createdUser.id,
+            name: user.name,
+            phone: user.phone,
+            vehicle: user.vehicle,
+            status: 'AVAILABLE',
+          },
+        });
+      }
+
+      return mapUser(createdUser);
+    }),
   },
   rides: {
     allByUser: async (userId) => (await prisma.ride.findMany({
@@ -88,7 +126,12 @@ const db = {
       const created = await prisma.ride.create({ data: {
         userId: Number(ride.user_id),
         pickup: ride.pickup,
+        pickupLat: ride.pickup_lat ?? null,
+        pickupLng: ride.pickup_lng ?? null,
         destination: ride.destination,
+        destinationLat: ride.destination_lat ?? null,
+        destinationLng: ride.destination_lng ?? null,
+        distanceMeters: ride.distance_meters ?? null,
         vehicleType: ride.vehicle_type,
         fare: Number(ride.fare),
         status: dbStatus(ride.status, 'REQUESTED'),
@@ -97,14 +140,14 @@ const db = {
     },
   },
   payments: {
+    all: async () => (await prisma.payment.findMany({
+      orderBy: { createdAt: 'desc' },
+      include: { user: { select: { name: true, email: true } } },
+    })).map(mapPayment),
     allByUser: async (userId) => (await prisma.payment.findMany({
       where: { userId: Number(userId) },
       orderBy: { createdAt: 'desc' },
-    })).map((payment) => ({
-      ...payment,
-      type: normalizeStatus(payment.type, 'Topup'),
-      status: normalizeStatus(payment.status, 'Completed'),
-    })),
+    })).map(mapPayment),
     create: async (payment) => {
       const created = await prisma.payment.create({ data: {
         userId: Number(payment.user_id),

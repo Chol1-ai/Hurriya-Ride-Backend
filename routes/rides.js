@@ -10,7 +10,7 @@ router.get('/', authenticateToken, async (req, res) => {
 });
 
 router.post('/request', authenticateToken, async (req, res) => {
-  const { pickup, destination, vehicleType } = req.body || {};
+  const { pickup, destination, vehicleType, pickupCoordinates, destinationCoordinates, distanceMeters } = req.body || {};
 
   if (!pickup || !destination || !vehicleType) {
     return res.status(400).json({
@@ -19,11 +19,33 @@ router.post('/request', authenticateToken, async (req, res) => {
     });
   }
 
+  const hasCoordinates = pickupCoordinates != null || destinationCoordinates != null || distanceMeters != null;
+  const validPoint = (point) => point
+    && Number.isFinite(Number(point.lat))
+    && Number.isFinite(Number(point.lng))
+    && Number(point.lat) >= -90
+    && Number(point.lat) <= 90
+    && Number(point.lng) >= -180
+    && Number(point.lng) <= 180;
+
+  if (hasCoordinates && (!validPoint(pickupCoordinates) || !validPoint(destinationCoordinates))) {
+    return res.status(400).json({ success: false, message: 'Valid pickup and destination coordinates are required' });
+  }
+
+  if (distanceMeters != null && (!Number.isFinite(Number(distanceMeters)) || Number(distanceMeters) < 0)) {
+    return res.status(400).json({ success: false, message: 'Valid route distance is required' });
+  }
+
   const fare = vehicleType === 'Car' ? 7500 : vehicleType === 'XL' ? 9000 : vehicleType === 'Tuktuk' ? 4000 : 4500;
   const ride = await db.rides.create({
     user_id: Number(req.user.id),
     pickup,
+    pickup_lat: pickupCoordinates?.lat == null ? null : Number(pickupCoordinates.lat),
+    pickup_lng: pickupCoordinates?.lng == null ? null : Number(pickupCoordinates.lng),
     destination,
+    destination_lat: destinationCoordinates?.lat == null ? null : Number(destinationCoordinates.lat),
+    destination_lng: destinationCoordinates?.lng == null ? null : Number(destinationCoordinates.lng),
+    distance_meters: distanceMeters == null ? null : Math.round(Number(distanceMeters)),
     vehicle_type: vehicleType,
     fare,
     status: 'requested',
