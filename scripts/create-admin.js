@@ -8,6 +8,11 @@ async function main() {
   const email = process.env.ADMIN_EMAIL?.trim().toLowerCase();
   const password = process.env.ADMIN_PASSWORD;
 
+  if (!name && !email && !password) {
+    console.log('Admin provisioning skipped: ADMIN_* variables are not configured');
+    return;
+  }
+
   if (!name || !email || !password || password.length < 12) {
     throw new Error('Set ADMIN_NAME, ADMIN_EMAIL, and an ADMIN_PASSWORD of at least 12 characters');
   }
