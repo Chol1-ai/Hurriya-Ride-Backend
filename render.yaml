@@ -3,7 +3,7 @@ databases:
     databaseName: hurriya_ride
     user: hurriya_ride
     postgresMajorVersion: '16'
-    plan: 0.1c-256mb
+    plan: free
     region: frankfurt
     ipAllowList: []
 
@@ -11,7 +11,7 @@ services:
   - type: web
     name: hurriya-ride-api
     runtime: node
-    plan: 0.5c-512mb
+    plan: free
     region: frankfurt
     buildCommand: npm ci && npm run prisma:generate
     preDeployCommand: npm run prisma:migrate:deploy
